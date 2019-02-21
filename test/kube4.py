@@ -49,13 +49,13 @@ def getUnreadyNodes(node_list):
         node_new = False
         time_created = node.metadata.creation_timestamp
         time_now = pytz.UTC.localize(datetime.utcnow())
-        node_new = time_created - time_now < timedelta(minutes=90)
+        time_diff = time_now - time_created 
+        node_new = time_diff < timedelta(minutes=5)
         for current_status in node_status:
             if current_status.type == 'Ready' and current_status.status == "False" and node_new == False:
                 node_ready = False
                 unreadyNodes.append(node)
-
-        print(node.metadata.name + " ready: " + str(node_ready) + str(node_new))
+        print(node.metadata.name + " ready: " + str(node_ready))
     return unreadyNodes
 
 
