@@ -5,6 +5,8 @@ import time
 from httplib2 import Http
 from json import dumps
 import os
+from datetime import datetime, timedelta
+import pytz
 
 nodeToPodsDict = {}
 clusterName = ""
@@ -48,8 +50,13 @@ def getUnreadyNodes(node_list):
         nodeToPodsDict[node.metadata.name] = []
         node_ready = True
         node_status = node.status.conditions
+        node_new = False
+        time_created = node.metadata.creation_timestamp
+        time_now = pytz.UTC.localize(datetime.utcnow())
+        time_diff = time_now - time_created 
+        node_new = time_diff < timedelta(minutes=5)
         for current_status in node_status:
-            if current_status.type == 'Ready' and current_status.status == "False":
+            if current_status.type == 'Ready' and current_status.status == "False" and node_new == False:
                 node_ready = False
                 unreadyNodes.append(node)
         
