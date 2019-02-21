@@ -13,13 +13,9 @@ clusterName = ""
 queryTime = 60
 hangoutThreadURL = ""
 
-def loadK8SConfig():
-    if 'KUBERNETES_PORT' in os.environ:
-        config.load_incluster_config()
-    else:
-        config.load_kube_config()
+config.load_kube_config()
 
-loadK8SConfig()
+
 api_instance = client.CoreV1Api()
 
 def readENVVariables():
@@ -36,11 +32,11 @@ def getWorkerNodesStatus():
         api_response = api_instance.list_node(include_uninitialized=True, pretty='true')
         node_list = api_response.items
         #Find nodes where Ready status is false
-        unreadyNodes = node.status.conditions(node_list)
+        unreadyNodes = getUnreadyNodes(node_list)
         #mapPodsToNode()
         #Send alerts for nodes not ready
         if len(unreadyNodes) != 0:
-            sendNodeNotReadyAlert(createAlertMessage(unreadyNodes))
+            print (unreadyNodes)
     except ApiException as e:
         print("Exception when calling CoreV1Api->list_node: %s\n" % e)
 
@@ -53,52 +49,15 @@ def getUnreadyNodes(node_list):
         node_new = False
         time_created = node.metadata.creation_timestamp
         time_now = pytz.UTC.localize(datetime.utcnow())
-        node_new = time_created - time_now < timedelta(minutes=5)
+        node_new = time_created - time_now < timedelta(minutes=90)
         for current_status in node_status:
             if current_status.type == 'Ready' and current_status.status == "False" and node_new == False:
                 node_ready = False
                 unreadyNodes.append(node)
-        
-        print(node.metadata.name + " ready: " + str(node_ready))
+
+        print(node.metadata.name + " ready: " + str(node_ready) + str(node_new))
     return unreadyNodes
 
-def mapPodsToNode():
-    try: 
-        api_response = api_instance.list_pod_for_all_namespaces()
-        pods_list = api_response.items
-        for pod in pods_list:
-            nodeToPodsDict[pod.spec.node_name].append(pod.metadata.name)
-    except ApiException as e:
-        print("Exception when calling CoreV1Api->list_pod_for_all_namespaces: %s\n" % e)
-
-def createAlertMessage(unreadyNodes):
-    if len(unreadyNodes) == 0:
-        return ""
-    alert_string = "<users/all> NODES NOT READY in "+clusterName+"\n"
-    node_string = "Unready Nodes\n"
-
-    for node in unreadyNodes:
-        node_string += node.metadata.name + "\n"
-    alert_string += node_string
-    return alert_string
-
-def sendNodeNotReadyAlert(alertMesage):
-    webhook_uri = hangoutThreadURL
-    bot_message = {
-        'text' : alertMesage}
-
-    message_headers = { 'Content-Type': 'application/json; charset=UTF-8'}
-
-    http_obj = Http()
-
-    response = http_obj.request(
-        uri=webhook_uri,
-        method='POST',
-        headers=message_headers,
-        body=dumps(bot_message),
-    )
-
-clusterName,queryTime,hangoutThreadURL = readENVVariables()
 
 print("Starting Kubernetes Monitor")
 while True:
