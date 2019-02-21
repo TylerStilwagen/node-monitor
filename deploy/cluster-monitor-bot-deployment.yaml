@@ -1,0 +1,30 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: node-monitor
+  labels:
+    app: node-monitor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: node-monitor
+  template:
+    metadata:
+      labels:
+        app: node-monitor
+    spec:
+      serviceAccount: node-monitor
+      serviceAccountName: node-monitor
+      containers:
+      - name: node-monitor
+        image: reg.iherb.net/platform/k8s-monitor-bot:0.0.3
+        env:
+          - name: CLUSTER_NAME
+            value: irvine-test-0
+          - name: QUERY_TIME
+            value: "60.0"
+          - name: HANGOUT_URL
+            value: https://chat.googleapis.com/v1/spaces/AAAAKVMXb9g/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=TGHSJJL9GwXUgrOvBs8onX3za3vclye20hPhVcFP03I%3D
+      imagePullSecrets:
+      - name: harbor-authenticate
